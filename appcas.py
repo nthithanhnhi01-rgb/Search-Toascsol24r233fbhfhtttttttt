@@ -1,94 +1,102 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
+import base64
 
-# --- 1. CẤU HÌNH TRANG ---
-st.set_page_config(page_title="Chemical Regulatory Database", page_icon="🧪", layout="wide")
+# --- 1. CẤU HÌNH ---
+st.set_page_config(page_title="Chemical Regulatory Database", page_icon="🧪", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. CSS "CARD UI" (TẠO KHỐI NỔI 3D) ---
+# --- 2. CSS "ÉP GIAO DIỆN" (FIXED) ---
 st.markdown("""
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-    /* Ẩn header/footer mặc định */
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    .block-container {padding-top: 1rem; padding-bottom: 1rem;}
-
-    /* HEADER STYLE */
-    .custom-header {
-        background: linear-gradient(90deg, #2d3e50 0%, #4b6cb7 100%);
-        color: #fff;
-        padding: 20px 25px;
-        border-bottom: 4px solid #f39c12;
-        margin-bottom: 30px;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-
-    /* CARD STYLE (BIẾN KHUNG THÀNH KHỐI NỔI) */
-    /* Target vào container có viền của Streamlit */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 12px; /* Bo góc mềm mại */
-        border: 1px solid #f0f0f0; /* Viền mờ */
-        background-color: white;
-        /* ĐỔ BÓNG TẠO ĐỘ NỔI (Shadow) */
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s; /* Hiệu ứng nhún nhẹ nếu muốn */
-        padding: 10px;
-    }
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    /* CARD HEADER (TIÊU ĐỀ TRONG KHỐI) */
-    .card-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #2c3e50;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #f1f1f1;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .card-icon {
-        color: #0066b3; /* Màu xanh icon */
-        font-size: 1.2rem;
-    }
+    <style>
+        /* RESET CƠ BẢN */
+        #MainMenu, footer, header {visibility: hidden;}
+        .block-container { padding-top: 0rem; padding-bottom: 0rem; padding-left: 1rem; padding-right: 1rem; }
+        
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f7fa; font-size: 14px; }
 
-    /* INPUT STYLE */
-    .stTextInput input {
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        padding: 8px 12px;
-    }
-    .stTextInput input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-    }
+        /* HEADER */
+        .site-header {
+            background-color: #2d3e50; color: #fff; padding: 12px 20px;
+            border-bottom: 3px solid #f39c12; margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        /* KHUNG SEARCH PANEL */
+        .search-panel-container {
+            background: #fff; border: 1px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        /* CHỈNH INPUT CỦA STREAMLIT CHO GIỐNG BOOTSTRAP */
+        div[data-testid="stTextInput"] input {
+            border-radius: 0; border: 1px solid #ced4da; height: 34px; font-size: 13px;
+        }
+        div[data-testid="stTextInput"] input:focus { border-color: #86b7fe; box-shadow: none; }
+        
+        div[data-testid="stTextArea"] textarea {
+            border-radius: 0; border: 1px solid #ced4da; font-family: 'Consolas', monospace; font-size: 12px;
+        }
 
-    /* BUTTONS */
-    div[data-testid="stButton"] > button {
-        border-radius: 6px;
-        font-weight: 600;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: all 0.2s;
-    }
-    div[data-testid="stButton"] > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-    }
-    
-    /* BẢNG KẾT QUẢ */
-    div[data-testid="stDataFrame"] {
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-</style>
+        /* NÚT BẤM */
+        div.stButton > button {
+            border-radius: 0; border: none; font-weight: 600; font-size: 13px; height: 34px;
+        }
+        /* Nút Reset & Search (Xanh rêu) */
+        .btn-green button { background-color: #3a5a40; color: white; }
+        .btn-green button:hover { background-color: #2c4431; color: white; }
+        
+        /* Nút Batch (Xanh dương) */
+        .btn-blue button { background-color: #2980b9; color: white; }
+        .btn-blue button:hover { background-color: #1c6ea4; color: white; }
+
+        /* Nút Reset trắng */
+        .btn-light button { background-color: #f8f9fa; color: #333; border: 1px solid #ccc; }
+        .btn-light button:hover { background-color: #e2e6ea; border-color: #adb5bd; color: #333; }
+        
+        /* EXPORT BUTTON STYLE (Đè lên nút download mặc định) */
+        div[data-testid="stDownloadButton"] button {
+            border: 1px solid #198754; color: #198754; background: white; font-size: 12px; padding: 4px 10px; height: auto;
+        }
+        div[data-testid="stDownloadButton"] button:hover {
+            background-color: #198754; color: white;
+        }
+
+        /* LABEL GIẢ */
+        .custom-label { font-size: 11px; font-weight: 700; color: #666; margin-bottom: 2px; display: block; text-transform: uppercase; }
+        .section-title { font-weight: 700; color: #444; font-size: 0.95rem; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-bottom: 10px; display: block;}
+
+        /* TABLE STYLE (QUAN TRỌNG) */
+        .table-custom { width: 100%; border-collapse: collapse; font-size: 13px; background: white; border: 1px solid #ccc; }
+        .table-custom thead th {
+            position: sticky; top: 0; background-color: #e9ecef; color: #495057; z-index: 1;
+            padding: 10px; border-bottom: 2px solid #adb5bd; border-right: 1px solid #dee2e6;
+            font-weight: 700; text-align: center; white-space: nowrap;
+        }
+        .table-custom tbody td {
+            padding: 8px 10px; border-bottom: 1px solid #dee2e6; border-right: 1px solid #dee2e6; vertical-align: middle; color: #212529;
+        }
+        .table-custom tr:nth-child(even) { background-color: #f8f9fa; }
+        .table-custom tr:hover { background-color: #e2e6ea; }
+
+        .col-cas { font-family: 'Consolas', monospace; font-weight: bold; color: #d63384; text-align: center; }
+        .reg-badge {
+            display: inline-block; padding: 3px 6px; font-size: 11px;
+            border: 1px solid #dee2e6; background: #fff; margin-right: 4px; margin-bottom: 4px; border-radius: 4px;
+        }
+        .reg-danger { border-color: #f5c6cb; color: #721c24; background: #f8d7da; }
+        .reg-warning { border-color: #ffeeba; color: #856404; background: #fff3cd; }
+        .link-icon { color: #0d6efd; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px;}
+        .link-icon:hover { text-decoration: underline; }
+    </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOAD DATA ---
+# --- 3. LOGIC XỬ LÝ DỮ LIỆU ---
 @st.cache_data(ttl=600)
 def load_data():
+    # LINK GOOGLE SHEET
     sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-4uKzaw2LpN5lBOGyG4MB3DPbaC6p6SbtO-yhoEQHRVFx30UHgJOSGfwTn-dOHkhBjAMoDea8n0ih/pub?gid=0&single=true&output=csv"
     try:
         df = pd.read_csv(sheet_url, dtype=str)
@@ -103,157 +111,159 @@ def to_excel(df):
         df.to_excel(writer, index=False, sheet_name='KetQua')
     return output.getvalue()
 
-# --- 4. AUTH ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
+def reset_all():
+    st.session_state["f_cas"] = ""
+    st.session_state["f_name"] = ""
+    st.session_state["f_formula"] = ""
+    st.session_state["batch_input"] = ""
 
-def login_screen():
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c2:
-        # Dùng container border=True để nó tự nhận CSS Shadow ở trên
-        with st.container(border=True):
-            st.markdown("<h3 style='text-align:center;'>Đăng nhập hệ thống</h3>", unsafe_allow_html=True)
-            u = st.text_input("Tài khoản")
-            p = st.text_input("Mật khẩu", type="password")
-            if st.button("Đăng nhập", type="primary", use_container_width=True):
-                if u == "admin" and p == "admin123":
-                    st.session_state['logged_in'] = True
-                    st.rerun()
-                else:
-                    st.error("Sai thông tin")
+# --- 4. GIAO DIỆN CHÍNH ---
 
-# --- 5. MAIN APP ---
-def main_app():
-    # A. HEADER
-    st.markdown("""
-    <div class="custom-header">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <i class="fa-solid fa-flask-vial fa-2xl"></i>
-                <div>
-                    <h1 style="margin:0; font-size:1.5rem; text-transform:uppercase;">Chemical Regulatory Database</h1>
-                    <div style="opacity:0.9; font-size:0.9rem;">Hệ thống tra cứu số CAS & Ngưỡng tồn trữ</div>
-                </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.2); padding:5px 15px; border-radius:20px; font-weight:bold;">
-                <i class="fa-regular fa-user"></i> Admin
+# A. HEADER (HTML THUẦN)
+st.markdown("""
+    <div class="site-header">
+        <div style="display:flex; align-items:center;">
+            <i class="fa-solid fa-layer-group fa-lg" style="margin-right: 15px;"></i>
+            <div>
+                <div style="font-size: 1.4rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Chemical Regulatory Database</div>
+                <div style="font-size: 0.85rem; opacity: 0.9; font-weight: 300;">Hệ thống tra cứu số CAS & Ngưỡng tồn trữ (NĐ 113/2017)</div>
             </div>
         </div>
+        <div><span style="background:rgba(255,255,255,0.2); padding:5px 10px; border-radius:4px; font-size:13px;"><i class="fa-solid fa-user"></i> Admin User</span></div>
     </div>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-    df = load_data()
+df = load_data()
 
-    # B. GIAO DIỆN TÌM KIẾM (2 KHỐI SONG SONG CÓ BÓNG ĐỔ)
-    # Tỷ lệ 2.5 : 1
-    col_single, col_batch = st.columns([2.5, 1], gap="medium")
-
-    # --- KHỐI 1: TRA CỨU ĐƠN ---
-    with col_single:
-        # st.container(border=True) sẽ tự động nhận CSS box-shadow ở trên
-        with st.container(border=True):
-            # Header có Icon
-            st.markdown("""
-                <div class="card-title">
-                    <i class="card-icon fa-solid fa-filter"></i> TRA CỨU ĐƠN (FILTER)
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Input Area
-            c1, c2, c3 = st.columns([1.5, 3, 1.5])
-            with c1:
-                cas_input = st.text_input("Số CAS", placeholder="VD: 67-64-1")
-            with c2:
-                name_input = st.text_input("Tên hóa chất (EN/VI)", placeholder="Acetone...")
-            with c3:
-                formula_input = st.text_input("Công thức", placeholder="C3H6O")
-            
-            # Nút tìm kiếm nằm riêng 1 dòng cho thoáng hoặc để cùng dòng tùy bạn
-            # Ở đây tôi để nút Tìm kiếm Full width phía dưới cho đẹp
-            st.write("")
-            btn_single = st.button("🔍 Tìm kiếm ngay", type="primary", use_container_width=True)
-
-    # --- KHỐI 2: TRA CỨU HÀNG LOẠT ---
-    with col_batch:
-        with st.container(border=True):
-            # Header có Icon
-            st.markdown("""
-                <div class="card-title">
-                    <i class="card-icon fa-solid fa-list-check"></i> TRA CỨU HÀNG LOẠT
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Input Area
-            batch_input = st.text_area("Nhập list CAS", height=108, placeholder='"67-64-1"; "7664-93-9"', label_visibility="collapsed")
-            
-            st.write("")
-            btn_batch = st.button("🚀 Tra cứu Batch", type="secondary", use_container_width=True)
-
-    # C. LOGIC LỌC DỮ LIỆU
-    result_df = pd.DataFrame()
-    if df is not None and not df.empty:
-        # Logic Batch
-        if btn_batch and batch_input:
-            keywords = [x.strip().replace('"', '').replace("'", "") for x in batch_input.split(';') if x.strip()]
-            if 'MaCAS' in df.columns:
-                result_df = df[df['MaCAS'].isin(keywords)]
-        # Logic Single (Auto Filter khi bấm nút hoặc gõ)
-        elif cas_input or name_input or formula_input:
-            result_df = df.copy()
-            if cas_input and 'MaCAS' in result_df.columns:
-                result_df = result_df[result_df["MaCAS"].astype(str).str.contains(cas_input.strip(), case=False, na=False)]
-            if name_input and 'Tên chất' in result_df.columns:
-                 mask = result_df["Tên chất"].astype(str).str.contains(name_input.strip(), case=False, na=False)
-                 if 'Tên khoa học (danh pháp IUPAC)' in result_df.columns:
-                     mask = mask | result_df["Tên khoa học (danh pháp IUPAC)"].astype(str).str.contains(name_input.strip(), case=False, na=False)
-                 result_df = result_df[mask]
-            if formula_input and 'Công thức hóa học' in result_df.columns:
-                result_df = result_df[result_df["Công thức hóa học"].astype(str).str.contains(formula_input.strip(), case=False, na=False)]
-        else:
-            # Nếu chưa làm gì thì để trống hoặc hiện tất cả (tùy bạn), ở đây mình để trống cho gọn
-            pass
-
-    # D. HIỂN THỊ KẾT QUẢ
-    st.write("---")
+# B. SEARCH PANEL (DÙNG CONTAINER ĐỂ BAO QUANH)
+with st.container():
+    st.markdown('<div class="search-panel-container" style="padding: 0;">', unsafe_allow_html=True)
     
-    # Thanh công cụ kết quả
-    c_res_1, c_res_2 = st.columns([8, 2], vertical_alignment="center")
-    with c_res_1:
-        if not result_df.empty:
-            st.success(f"✅ Tìm thấy **{len(result_df)}** kết quả phù hợp.")
-        else:
-            if btn_single or btn_batch:
-                st.warning("Không tìm thấy kết quả nào.")
-            else:
-                st.info("👋 Vui lòng nhập thông tin để tra cứu.")
+    # Chia làm 2 cột lớn: Single (70%) - Batch (30%)
+    col_single, col_batch = st.columns([7, 3], gap="large")
+    
+    # --- CỘT TRÁI: SINGLE SEARCH ---
+    with col_single:
+        st.markdown('<div style="padding: 15px;">', unsafe_allow_html=True) # Padding thủ công
+        st.markdown('<span class="section-title"><i class="fa-solid fa-filter me-1"></i> TRA CỨU ĐƠN (FILTER)</span>', unsafe_allow_html=True)
+        
+        # Hàng nhập liệu (Chia 4 cột nhỏ)
+        c1, c2, c3, c4 = st.columns([2, 4, 2, 2])
+        
+        with c1:
+            st.markdown('<span class="custom-label">SỐ CAS</span>', unsafe_allow_html=True)
+            f_cas = st.text_input("CAS", label_visibility="collapsed", key="f_cas", placeholder="67-64-1")
+        with c2:
+            st.markdown('<span class="custom-label">TÊN HÓA CHẤT (EN / IUPAC)</span>', unsafe_allow_html=True)
+            f_name = st.text_input("Name", label_visibility="collapsed", key="f_name", placeholder="Acetone...")
+        with c3:
+            st.markdown('<span class="custom-label">CÔNG THỨC</span>', unsafe_allow_html=True)
+            f_formula = st.text_input("Formula", label_visibility="collapsed", key="f_formula", placeholder="C3H6O")
+        with c4:
+            st.markdown('<span class="custom-label">&nbsp;</span>', unsafe_allow_html=True)
+            # Nút Reset (Style class btn-light)
+            st.markdown('<div class="btn-light">', unsafe_allow_html=True)
+            st.button("↻ Làm mới", on_click=reset_all, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    with c_res_2:
-        if not result_df.empty:
-            excel_data = to_excel(result_df)
-            st.download_button("📥 Xuất Excel", excel_data, "KetQua.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        st.markdown('<div style="margin-top:8px; font-size:11px; color:#6c757d; font-style:italic;"><i class="fa-solid fa-circle-info me-1"></i>Hệ thống tự động lọc khi bạn nhập liệu (Auto-Filter).</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True) # End padding
 
-    # Bảng dữ liệu
-    st.dataframe(
-        result_df,
-        use_container_width=True,
-        hide_index=True,
-        height=500,
-        column_config={
-            "STT": st.column_config.NumberColumn("STT", width="small"),
-            "MaCAS": st.column_config.TextColumn("Mã CAS", width="small"),
-            "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
-            "Tên khoa học (danh pháp IUPAC)": st.column_config.TextColumn("Tên IUPAC", width="medium"),
-            "Công thức hóa học": st.column_config.TextColumn("CTHH", width="small"),
-            "Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)": st.column_config.TextColumn("Ngưỡng (kg)", width="medium"),
-            "Link văn bản": st.column_config.LinkColumn("Văn bản", display_text="Xem ngay 🔗")
-        }
-    )
+    # --- CỘT PHẢI: BATCH SEARCH ---
+    with col_batch:
+        # Style nền xanh nhạt cho cột này
+        st.markdown('<div style="background-color: #f8f9fa; height: 100%; padding: 15px; border-left: 1px solid #dee2e6;">', unsafe_allow_html=True)
+        st.markdown('<span class="section-title" style="color:#0d6efd"><i class="fa-solid fa-list-check me-1"></i> TRA CỨU HÀNG LOẠT</span>', unsafe_allow_html=True)
+        
+        st.markdown('<span class="custom-label">DANH SÁCH CAS (CÁCH NHAU DẤU ;)</span>', unsafe_allow_html=True)
+        batch_input = st.text_area("Batch", label_visibility="collapsed", key="batch_input", height=38, placeholder='"67-64-1"; "7664-93-9"')
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='text-align:center; color:#999; margin-top:50px; font-size:12px;'>© 2026 Shine Group System</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True) # End search-panel-container
 
-# --- RUN ---
-if st.session_state['logged_in']:
-    main_app()
+# --- LOGIC LỌC ---
+df_result = pd.DataFrame()
+if df is not None and not df.empty:
+    df_result = df.copy()
+    if batch_input:
+        keywords = [x.strip().replace('"', '').replace("'", "") for x in batch_input.split(';') if x.strip() != '']
+        if 'MaCAS' in df_result.columns:
+            df_result = df_result[df_result['MaCAS'].isin(keywords)]
+    else:
+        if f_cas and 'MaCAS' in df_result.columns:
+            df_result = df_result[df_result['MaCAS'].astype(str).str.contains(f_cas.strip(), case=False, na=False)]
+        if f_name and 'Tên chất' in df_result.columns:
+            df_result = df_result[df_result['Tên chất'].astype(str).str.contains(f_name.strip(), case=False, na=False)]
+        if f_formula and 'Công thức hóa học' in df_result.columns:
+            df_result = df_result[df_result['Công thức hóa học'].astype(str).str.contains(f_formula.strip(), case=False, na=False)]
+
+# --- C. BẢNG KẾT QUẢ ---
+
+# Thanh công cụ bảng (Kết quả + Nút Export)
+col_info, col_export = st.columns([8, 2])
+with col_info:
+    st.markdown(f'<div style="font-weight:700; color:#495057; margin-top:5px;">KẾT QUẢ TÌM KIẾM: <span style="color:#0d6efd">{len(df_result)}</span> bản ghi</div>', unsafe_allow_html=True)
+with col_export:
+    if len(df_result) > 0:
+        excel_data = to_excel(df_result)
+        st.download_button(
+            label="📥 Xuất Excel (.xlsx)",
+            data=excel_data,
+            file_name='KetQua_TraCuu.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            use_container_width=True
+        )
+
+# TẠO HTML TABLE (FIX LỖI HIỂN THỊ)
+table_html = '<div style="overflow-x:auto; margin-top:10px;"><table class="table-custom">'
+table_html += '<thead><tr><th width="5%">STT</th><th width="20%">Tên chất</th><th width="15%">Tên IUPAC</th><th width="10%">Mã CAS</th><th width="8%">Công thức</th><th width="10%">Ngưỡng (kg)</th><th width="22%">Phụ lục quản lý</th><th width="10%">Văn bản</th></tr></thead><tbody>'
+
+if len(df_result) > 0:
+    for idx, row in df_result.iterrows():
+        # Xử lý Phụ lục (Badges)
+        pl_raw = str(row.get('Phụ lục quản lý', ''))
+        pl_html = ""
+        if pl_raw and pl_raw.lower() != 'nan':
+             # Tách theo dòng hoặc dấu phẩy
+             items = pl_raw.replace('\n', ';').split(';') 
+             for item in items:
+                 item = item.strip()
+                 if item:
+                     cls = "reg-badge"
+                     if any(x in item.lower() for x in ['hạn chế', 'nguy hiểm', 'pl i', 'tiền chất']):
+                         cls += " reg-danger"
+                     elif any(x in item.lower() for x in ['khai báo', 'pl v']):
+                         cls += " reg-warning"
+                     pl_html += f'<span class="{cls}">{item}</span> '
+        
+        # Xử lý Link
+        link_url = str(row.get('Link văn bản', '#'))
+        link_display = f'<a href="{link_url}" target="_blank" class="link-icon">Xem <i class="fa-solid fa-up-right-from-square" style="font-size:10px;"></i></a>' if len(link_url) > 4 else ''
+        
+        # Xử lý Ngưỡng
+        nguong = str(row.get('Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)', ''))
+        nguong_display = f'<span style="color:#dc3545; font-weight:bold;">{nguong}</span>' if nguong and nguong.lower() != 'nan' else '-'
+
+        table_html += f"""
+        <tr>
+            <td style="text-align:center;">{row.get('STT', idx+1)}</td>
+            <td style="font-weight:600;">{row.get('Tên chất', '')}</td>
+            <td>{row.get('Tên khoa học (danh pháp IUPAC)', '')}</td>
+            <td class="col-cas">{row.get('MaCAS', '')}</td>
+            <td style="text-align:center;">{row.get('Công thức hóa học', '')}</td>
+            <td style="text-align:right;">{nguong_display}</td>
+            <td>{pl_html}</td>
+            <td style="text-align:center;">{link_display}</td>
+        </tr>
+        """
 else:
-    login_screen()
+    table_html += '<tr><td colspan="8" style="text-align:center; padding:20px; color:#6c757d;">Không tìm thấy dữ liệu phù hợp.</td></tr>'
+
+table_html += "</tbody></table></div>"
+
+# Render Table
+st.markdown(table_html, unsafe_allow_html=True)
+
+# FOOTER
+st.markdown('<div style="margin-top:30px; border-top:1px solid #eee; padding-top:10px; text-align:center; color:#adb5bd; font-size:11px;">© 2026 Shine Group Internal Tool</div>', unsafe_allow_html=True)
