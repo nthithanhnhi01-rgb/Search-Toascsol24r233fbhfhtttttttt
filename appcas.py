@@ -159,7 +159,7 @@ def main_screen():
         with col_f1:
             filter_cas = st.text_input("Mã CAS", placeholder="VD: 50-00-0")
         with col_f2:
-            filter_name = st.text_input("Tên hóa chất (Tiếng Anh/Việt)", placeholder="VD: Formaldehyde")
+            filter_name = st.text_input("Tên tiếng Anh", placeholder="VD: Formaldehyde")
         with col_f3:
             filter_formula = st.text_input("Công thức hóa học", placeholder="VD: HCHO")
         with col_f4:
@@ -172,12 +172,12 @@ def main_screen():
         if filter_cas:
             # Lọc theo CAS (chứa chuỗi nhập vào)
             if 'CAS' in df.columns:
-                df_result_t1 = df_result_t1[df_result_t1['CAS'].astype(str).str.contains(filter_cas.strip(), case=False, na=False)]
+                df_result_t1 = df_result_t1[df_result_t1['MaCAS'].astype(str).str.contains(filter_cas.strip(), case=False, na=False)]
         
         if filter_name:
             # Lọc theo Tên chất (chứa chuỗi nhập vào)
             if 'Tên chất' in df.columns:
-                df_result_t1 = df_result_t1[df_result_t1['Tên chất'].astype(str).str.contains(filter_name.strip(), case=False, na=False)]
+                df_result_t1 = df_result_t1[df_result_t1['Tên khoa học (danh pháp IUPAC)'].astype(str).str.contains(filter_name.strip(), case=False, na=False)]
         
         if filter_formula:
              if 'Công thức hóa học' in df.columns:
