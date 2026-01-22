@@ -129,7 +129,7 @@ def main_screen():
             # key='cas' để Streamlit nhớ giá trị
             f_cas = st.text_input("Mã CAS", placeholder="VD: 50, 106...", key="f_cas")
         with col_f2:
-            f_name = st.text_input("Tên hóa chất", placeholder="VD: Acid...", key="f_name")
+            f_name = st.text_input("Tên hóa chất (tiếng Anh)", placeholder="VD: Acid...", key="f_name")
         with col_f3:
             f_formula = st.text_input("Công thức hóa học", placeholder="VD: HCHO...", key="f_formula")
 
@@ -141,12 +141,12 @@ def main_screen():
         if f_cas:
             # Lọc theo chuỗi (contains), case=False (không phân biệt hoa thường), na=False (bỏ qua ô trống)
             if 'CAS' in df_result.columns:
-                df_result = df_result[df_result['CAS'].astype(str).str.contains(f_cas.strip(), case=False, na=False)]
+                df_result = df_result[df_result['MaCAS'].astype(str).str.contains(f_cas.strip(), case=False, na=False)]
         
         # 2. Lọc tiếp Tên (Nếu ô Tên có chữ) -> Lọc chồng lên kết quả trên
         if f_name:
             if 'Tên chất' in df_result.columns:
-                df_result = df_result[df_result['Tên chất'].astype(str).str.contains(f_name.strip(), case=False, na=False)]
+                df_result = df_result[df_result['Tên khoa học (danh pháp IUPAC)'].astype(str).str.contains(f_name.strip(), case=False, na=False)]
         
         # 3. Lọc tiếp Công thức (Nếu ô CT có chữ) -> Lọc chồng tiếp
         if f_formula:
