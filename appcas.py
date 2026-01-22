@@ -185,7 +185,7 @@ def main_screen():
         column_config={
             "STT": st.column_config.NumberColumn("STT", width="small"),
             "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
-"Tên khoa học (danh pháp IUPAC)":st.column_config.TextColumn("Tên khoa học (danh pháp IUPAC)", width="small")
+"Tên khoa học (danh pháp IUPAC)":st.column_config.TextColumn("Tên khoa học (danh pháp IUPAC)", width="small"),
             "CAS": st.column_config.TextColumn("MaCAS", width="medium"),
             "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
             "Phụ lục quản lý": st.column_config.TextColumn("Phụ lục quản lý", width="large"),
@@ -206,4 +206,5 @@ def main_screen():
 if st.session_state['logged_in']:
     main_screen()
 else:
+
     login_screen()
