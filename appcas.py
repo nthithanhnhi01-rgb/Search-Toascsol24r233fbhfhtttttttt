@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from io import BytesIO # Thư viện để xử lý file Excel trong bộ nhớ
 
 # --- 1. CẤU HÌNH TRANG WEB ---
 st.set_page_config(
@@ -47,6 +48,11 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { background-color: #007bff !important; color: white !important; }
     
+    /* BUTTON STYLES */
+    div.stButton > button:first-child {
+        font-weight: bold;
+    }
+
     /* FOOTER */
     .custom-footer {
         background-color: #0066b3; color: white; padding: 20px; text-align: center;
@@ -58,15 +64,32 @@ st.markdown("""
 # --- 3. LOAD DATA ---
 @st.cache_data(ttl=600)
 def load_data_from_sheet():
-    # LINK GOOGLE SHEET CỦA BẠN (Đừng quên kiểm tra lại link này)
+    # LINK GOOGLE SHEET CỦA BẠN
     sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-4uKzaw2LpN5lBOGyG4MB3DPbaC6p6SbtO-yhoEQHRVFx30UHgJOSGfwTn-dOHkhBjAMoDea8n0ih/pub?gid=0&single=true&output=csv" 
     try:
         df = pd.read_csv(sheet_url, dtype=str)
-        # Xóa khoảng trắng thừa ở tên cột để tránh lỗi
         df.columns = df.columns.str.strip() 
         return df
     except Exception:
         return None
+
+# --- HÀM XUẤT EXCEL ---
+def to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='KetQuaTraCuu')
+    processed_data = output.getvalue()
+    return processed_data
+
+# --- HÀM CLEAR FILTER (Tab 1) ---
+def clear_filter_callback():
+    st.session_state["f_cas"] = ""
+    st.session_state["f_name"] = ""
+    st.session_state["f_formula"] = ""
+
+# --- HÀM CLEAR BATCH (Tab 2) ---
+def clear_batch_callback():
+    st.session_state["batch_input"] = ""
 
 # --- 4. LOGIN ---
 if 'logged_in' not in st.session_state:
@@ -115,7 +138,7 @@ def main_screen():
 
     df = load_data_from_sheet()
     if df is None:
-        st.error("⚠️ Lỗi kết nối dữ liệu Google Sheet. Vui lòng kiểm tra lại Link.")
+        st.error("⚠️ Lỗi kết nối dữ liệu Google Sheet.")
         return
 
     # TẠO TABS
@@ -123,7 +146,7 @@ def main_screen():
 
     # --- TAB 1: TRA CỨU ĐƠN (AUTO-FILTER) ---
     with tab1:
-        st.caption("Nhập thông tin vào các ô để lọc tự động (Logic AND).")
+        st.caption("Nhập thông tin vào các ô để lọc tự động.")
         
         # 3 Cột nhập liệu
         col_f1, col_f2, col_f3 = st.columns(3)
@@ -134,26 +157,42 @@ def main_screen():
         with col_f3:
             f_formula = st.text_input("Công thức hóa học", placeholder="VD: HCHO...", key="f_formula")
 
-        # LOGIC LỌC (Dùng đúng tên cột bạn cung cấp: MaCAS, Tên chất, Công thức hóa học)
+        # LOGIC LỌC
         df_result = df.copy()
 
-        # 1. Lọc theo MaCAS
-        if f_cas:
-            if 'MaCAS' in df_result.columns:
-                df_result = df_result[df_result['MaCAS'].astype(str).str.contains(f_cas.strip(), case=False, na=False)]
+        if f_cas and 'MaCAS' in df_result.columns:
+            df_result = df_result[df_result['MaCAS'].astype(str).str.contains(f_cas.strip(), case=False, na=False)]
         
-        # 2. Lọc theo Tên chất
-        if f_name:
-            if 'Tên chất' in df_result.columns:
-                df_result = df_result[df_result['Tên chất'].astype(str).str.contains(f_name.strip(), case=False, na=False)]
+        if f_name and 'Tên chất' in df_result.columns:
+            df_result = df_result[df_result['Tên chất'].astype(str).str.contains(f_name.strip(), case=False, na=False)]
         
-        # 3. Lọc theo Công thức hóa học
-        if f_formula:
-             if 'Công thức hóa học' in df_result.columns:
-                df_result = df_result[df_result['Công thức hóa học'].astype(str).str.contains(f_formula.strip(), case=False, na=False)]
+        if f_formula and 'Công thức hóa học' in df_result.columns:
+            df_result = df_result[df_result['Công thức hóa học'].astype(str).str.contains(f_formula.strip(), case=False, na=False)]
 
+        # Hiển thị số lượng
         st.success(f"Tìm thấy: **{len(df_result)}** kết quả")
+        
+        # Hiển thị bảng
         show_table(df_result)
+
+        # --- NÚT CHỨC NĂNG (XUẤT FILE & REFRESH) ---
+        st.write("---") # Đường kẻ ngang phân cách
+        col_down, col_reset, col_empty = st.columns([2, 2, 6])
+        
+        with col_down:
+            # Chỉ hiện nút Download nếu có dữ liệu
+            if len(df_result) > 0:
+                excel_data = to_excel(df_result)
+                st.download_button(
+                    label="📥 Xuất Excel kết quả",
+                    data=excel_data,
+                    file_name='KetQua_Filter.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+        
+        with col_reset:
+            # Nút Refresh: Xóa các ô nhập liệu
+            st.button("🔄 Xóa bộ lọc / Làm mới", on_click=clear_filter_callback)
 
 
     # --- TAB 2: TRA CỨU HÀNG LOẠT ---
@@ -161,7 +200,7 @@ def main_screen():
         st.caption("Nhập danh sách mã CAS ngăn cách bởi dấu chấm phẩy (;).")
         col_search, col_btn = st.columns([8, 1])
         with col_search:
-            search_query = st.text_area("Danh sách mã CAS", height=80, placeholder='"50-00-0"; "67-64-1"')
+            search_query = st.text_area("Danh sách mã CAS", height=80, placeholder='"50-00-0"; "67-64-1"', key="batch_input")
         with col_btn:
             st.write("")
             st.write("")
@@ -171,16 +210,33 @@ def main_screen():
             df_batch = pd.DataFrame()
             keywords = [x.strip().replace('"', '').replace("'", "") for x in search_query.split(';') if x.strip() != '']
             
-            # Dùng đúng tên cột MaCAS
             if 'MaCAS' in df.columns:
                 df_batch = df[df['MaCAS'].isin(keywords)]
             
             st.info(f"Đã tìm thấy **{len(df_batch)}** hóa chất.")
             show_table(df_batch)
 
+            # --- NÚT CHỨC NĂNG (XUẤT FILE & REFRESH) ---
+            st.write("---")
+            col_down_2, col_reset_2, col_empty_2 = st.columns([2, 2, 6])
+            
+            with col_down_2:
+                if len(df_batch) > 0:
+                    excel_data_batch = to_excel(df_batch)
+                    st.download_button(
+                        label="📥 Xuất Excel kết quả",
+                        data=excel_data_batch,
+                        file_name='KetQua_HangLoat.xlsx',
+                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        key="btn_dl_batch"
+                    )
+            
+            with col_reset_2:
+                st.button("🔄 Xóa / Làm mới", on_click=clear_batch_callback, key="btn_reset_batch")
+
     st.markdown('<div class="custom-footer">© 2026 Bản quyền thuộc Cục hóa chất.</div>', unsafe_allow_html=True)
 
-# --- HÀM HIỂN THỊ BẢNG (MAPPING ĐÚNG CỘT CỦA BẠN) ---
+# --- HÀM HIỂN THỊ BẢNG ---
 def show_table(dataframe):
     st.dataframe(
         dataframe,
@@ -188,7 +244,6 @@ def show_table(dataframe):
         height=500,
         hide_index=True,
         column_config={
-            # Cấu hình hiển thị tên cột cho đẹp
             "STT": st.column_config.NumberColumn("STT", width="small"),
             "MaCAS": st.column_config.TextColumn("Mã CAS", width="small"),
             "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
