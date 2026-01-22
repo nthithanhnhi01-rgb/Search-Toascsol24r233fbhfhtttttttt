@@ -1,31 +1,25 @@
 import streamlit as st
 import pandas as pd
-from io import BytesIO
 
-# --- 1. CẤU HÌNH TRANG WEB (TAB BROWSER) ---
+# --- 1. CẤU HÌNH TRANG WEB ---
 st.set_page_config(
     page_title="Cơ sở dữ liệu Hóa chất Quốc gia", 
     page_icon="🇻🇳", 
     layout="wide",
-    initial_sidebar_state="collapsed" # Ẩn thanh bên cho giống web thật
+    initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS "THẦN THÁNH" (ĐỂ GIỐNG GIAO DIỆN CỤC HÓA CHẤT) ---
+# --- 2. CSS "THẦN THÁNH" ---
 st.markdown("""
     <style>
-    /* Chỉnh font chữ toàn trang */
-    html, body, [class*="css"] {
-        font-family: 'Arial', sans-serif;
-    }
-    
-    /* Ẩn bớt các thành phần thừa của Streamlit */
+    html, body, [class*="css"] { font-family: 'Arial', sans-serif; }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;} /* Ẩn thanh màu trên cùng của Streamlit */
+    header {visibility: hidden;}
 
-    /* HEADER XANH ĐẬM (GIỐNG ẢNH 1) */
+    /* HEADER */
     .header-custom {
-        background-color: #0066b3; /* Màu xanh chuẩn Cục HC */
+        background-color: #0066b3;
         padding: 15px 30px;
         display: flex;
         justify-content: space-between;
@@ -34,99 +28,73 @@ st.markdown("""
         color: white;
     }
     .header-logo-area h1 {
-        color: white !important;
-        font-size: 20px !important;
-        font-weight: 700 !important;
-        margin: 0 !important;
-        text-transform: uppercase;
-        padding: 0 !important;
-        line-height: 1.2;
+        color: white !important; font-size: 20px !important; font-weight: 700 !important;
+        margin: 0 !important; text-transform: uppercase; line-height: 1.2;
     }
     .header-logo-area p {
-        color: #ffcc00 !important; /* Chữ vàng Vietnam Chemical Database */
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        margin: 0 !important;
+        color: #ffcc00 !important; font-size: 14px !important; font-weight: 600 !important; margin: 0 !important;
     }
     .user-profile {
-        font-size: 14px;
-        background: #005091;
-        padding: 5px 15px;
-        border-radius: 4px;
+        font-size: 14px; background: #005091; padding: 5px 15px; border-radius: 4px;
     }
 
-    /* THANH MENU NGANG (Nav Bar) */
+    /* NAVBAR */
     .navbar {
-        background-color: #005a9e;
-        padding: 8px 30px;
-        display: flex;
-        gap: 25px;
-        border-bottom: 4px solid #e9ecef;
+        background-color: #005a9e; padding: 8px 30px; display: flex; gap: 25px; border-bottom: 4px solid #e9ecef;
     }
     .nav-item {
-        color: white;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 5px;
+        color: white; text-decoration: none; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 5px;
     }
     .nav-item:hover { color: #ffcc00; }
 
-    /* TIÊU ĐỀ TRANG (Chữ "Hóa chất" màu đỏ) */
+    /* CONTENT */
     .page-title {
-        color: #d93025;
-        font-size: 26px;
-        font-weight: bold;
-        margin-top: 20px;
-        margin-bottom: 15px;
-        padding-left: 10px;
-        border-left: 5px solid #d93025;
+        color: #d93025; font-size: 26px; font-weight: bold;
+        margin-top: 20px; margin-bottom: 15px; padding-left: 10px; border-left: 5px solid #d93025;
     }
-
-    /* FOOTER (Chân trang) */
     .custom-footer {
-        background-color: #0066b3;
-        color: white;
-        padding: 20px;
-        text-align: center;
-        font-size: 13px;
-        margin-top: 50px;
-        border-top: 4px solid #ffcc00;
+        background-color: #0066b3; color: white; padding: 20px; text-align: center;
+        font-size: 13px; margin-top: 50px; border-top: 4px solid #ffcc00;
     }
-
-    /* Tùy chỉnh nút bấm Search cho giống */
     .stButton button {
-        background-color: #f6b93b !important; /* Màu cam giống nút cộng */
-        color: #000 !important;
-        border: none !important;
-        font-weight: bold !important;
+        background-color: #f6b93b !important; color: #000 !important; border: none !important; font-weight: bold !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. DỮ LIỆU GIẢ LẬP (ĐỂ BẠN TEST KHI CHƯA CÓ FILE EXCEL CHUẨN) ---
-# Khi nào chạy thật thì xóa đoạn này đi và dùng pd.read_excel
-data_mock = {
-    'STT': [1, 2, 3],
-    'Mã': ['Nci No: \nHSCode:', 'Nci No: \nHSCode:', 'Nci No: \nHSCode:'],
-    'Cas': ['50-00-0', '50-01-1', '50-02-2'],
-    'Tên chất': [
-        'Tiếng Việt: Formaldehyde\nQuốc tế: Formaldehyde', 
-        'Tiếng Việt: Salt of hydrogen...\nQuốc tế: Salt of hydrogen...',
-        'Tiếng Việt: 9-Fluoro...\nQuốc tế: 9-Fluoro...'
-    ],
-    'Phụ lục quản lý': [
-        'Nghị định 113/2017/NĐ-CP: Hóa chất phải khai báo',
-        'Không quy định',
-        'Nghị định 113/2017/NĐ-CP: Hạn chế sản xuất'
-    ],
-    'LinkVanBan': ['https://vanban.chinhphu.vn', '', 'https://thuvienphapluat.vn']
-}
-df_mock = pd.DataFrame(data_mock)
+# --- 3. HÀM LOAD DỮ LIỆU TỪ GOOGLE SHEETS (QUAN TRỌNG) ---
+# Dùng @st.cache_data để không phải tải lại mỗi khi bấm nút (giúp web nhanh hơn)
+@st.cache_data(ttl=600) # 600 giây (10 phút) sẽ tự cập nhật dữ liệu mới 1 lần
+def load_data_from_sheet():
+    # -----------------------------------------------------------------------------------------
+    # BƯỚC QUAN TRỌNG: DÁN LINK CSV CỦA BẠN VÀO DƯỚI ĐÂY
+    # (File -> Share -> Publish to Web -> Chọn CSV -> Copy Link)
+    # -----------------------------------------------------------------------------------------
+    sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-4uKzaw2LpN5lBOGyG4MB3DPbaC6p6SbtO-yhoEQHRVFx30UHgJOSGfwTn-dOHkhBjAMoDea8n0ih/pub?gid=0&single=true&output=csv" 
+    
+    try:
+        # Nếu chưa có link (đang test), dùng dữ liệu giả
+        if "HÃY_DÁN" in sheet_url:
+            return None 
+            
+        df = pd.read_csv(sheet_url, dtype=str)
+        return df
+    except Exception as e:
+        return None
 
-# --- 4. HỆ THỐNG ĐĂNG NHẬP (GIỮ NGUYÊN) ---
+# Dữ liệu giả lập (Backup khi chưa có link thật)
+def get_mock_data():
+    data_mock = {
+        'STT': [1, 2, 3],
+        'Mã': ['Nci No: 123', 'Nci No: 456', 'Nci No: 789'],
+        'Cas': ['50-00-0', '50-01-1', '50-02-2'],
+        'Tên chất': ['Formaldehyde', 'Salt of hydrogen', 'Fluoro-11beta'],
+        'Phụ lục quản lý': ['Khai báo', 'Không quy định', 'Hạn chế'],
+        'LinkVanBan': ['https://vanban.chinhphu.vn', '', '']
+    }
+    return pd.DataFrame(data_mock)
+
+# --- 4. HỆ THỐNG ĐĂNG NHẬP ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
@@ -151,12 +119,11 @@ def login_screen():
                 st.rerun()
             else:
                 st.error("Sai tài khoản hoặc mật khẩu!")
-        
         st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 5. GIAO DIỆN CHÍNH (SAU KHI LOGIN) ---
+# --- 5. GIAO DIỆN CHÍNH ---
 def main_screen():
-    # A. HEADER HTML (Vẽ thủ công cho giống ảnh 1)
+    # Header & Navbar HTML
     st.markdown("""
         <div class="header-custom">
             <div class="header-logo-area">
@@ -167,35 +134,49 @@ def main_screen():
                 👤 Người dùng: <b>Admin</b> | <a href="#" style="color:white; text-decoration:none;">Thoát</a>
             </div>
         </div>
-        
         <div class="navbar">
             <a href="#" class="nav-item">🏠 Trang chủ</a>
             <a href="#" class="nav-item">📚 Tài liệu</a>
             <a href="#" class="nav-item">🔍 Tìm kiếm</a>
-            <a href="#" class="nav-item">📞 Liên hệ</a>
         </div>
     """, unsafe_allow_html=True)
 
-    # B. PHẦN NỘI DUNG CHÍNH
     st.markdown('<div class="page-title">Hóa chất</div>', unsafe_allow_html=True)
 
-    # Thanh tìm kiếm (Mô phỏng)
+    # --- KHUNG TÌM KIẾM ---
     col_search, col_btn = st.columns([8, 1])
     with col_search:
-        search_query = st.text_input("Nội dung cần tìm", label_visibility="collapsed", placeholder="Nhập tên chất, mã CAS, mã HS...")
+        # Ô nhập liệu
+        search_query = st.text_input("Nội dung cần tìm", label_visibility="collapsed", placeholder="Nhập mã CAS (ví dụ: 50-00-0; 50-01-1)...")
     with col_btn:
-        st.button("➕ Tìm kiếm")
+        # Nút bấm
+        btn_search = st.button("➕ Tìm kiếm")
 
-    # Xử lý dữ liệu (Dùng file Excel thật nếu có, không thì dùng Mock)
-    try:
-        df = pd.read_excel("dataCAS.xlsx", dtype=str)
-    except:
-        df = df_mock # Dùng dữ liệu giả nếu không thấy file Excel
-
-    # Hiển thị bảng kết quả
-    st.markdown("##### Danh mục chất")
+    # --- XỬ LÝ DỮ LIỆU ---
+    df = load_data_from_sheet()
     
-    # Cấu hình bảng cho đẹp
+    # Nếu tải Google Sheet lỗi hoặc chưa nhập link thì dùng dữ liệu giả
+    if df is None:
+        if "HÃY_DÁN" in "HÃY_DÁN": # Chỉ hiện thông báo này khi bạn chưa sửa code
+            st.warning("⚠️ Bạn chưa dán link Google Sheet vào code. Đang hiển thị dữ liệu mẫu.")
+        df = get_mock_data()
+
+    # --- LOGIC LỌC DỮ LIỆU (SEARCH) ---
+    # Nếu người dùng bấm nút Tìm hoặc đã nhập chữ và Enter
+    if search_query:
+        # Tách chuỗi nhập vào bằng dấu chấm phẩy ; (Ví dụ: "50-00-0; 64-17-5")
+        keywords = [x.strip() for x in search_query.split(';') if x.strip() != '']
+        
+        # Lọc trong cột 'Cas' (Bạn phải đảm bảo Google Sheet có cột tên là 'Cas')
+        # Nếu muốn tìm cả Tên chất thì dùng logic OR (|)
+        if 'Cas' in df.columns:
+            df = df[df['Cas'].isin(keywords)]
+        else:
+            st.error("Lỗi: Dữ liệu không có cột tên là 'Cas'. Hãy kiểm tra lại Google Sheet.")
+
+    # --- HIỂN THỊ BẢNG KẾT QUẢ ---
+    st.markdown(f"##### Danh mục chất ({len(df)} kết quả)")
+    
     st.dataframe(
         df,
         use_container_width=True,
@@ -203,20 +184,21 @@ def main_screen():
         hide_index=True,
         column_config={
             "STT": st.column_config.NumberColumn("STT", width="small"),
-            "Mã": st.column_config.TextColumn("Mã", width="small"), # Cột này chứa Nci No, HSCode
-            "Cas": st.column_config.TextColumn("Cas", width="small"),
-            "Tên chất": st.column_config.TextColumn("Tên chất", width="large"), # Cho rộng ra để hiện tên dài
+            "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
+"Tên khoa học (danh pháp IUPAC)":st.column_config.TextColumn("Tên khoa học (danh pháp IUPAC)", width="small")
+            "CAS": st.column_config.TextColumn("MaCAS", width="medium"),
+            "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
             "Phụ lục quản lý": st.column_config.TextColumn("Phụ lục quản lý", width="large"),
-            "LinkVanBan": st.column_config.LinkColumn("Thao tác", display_text="Xem chi tiết ℹ️")
+"Công thức hóa học":st.column_config.TextColumn("Công thức hóa học", width="small"),
+"Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)":st.column_config.TextColumn("Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)", width="small"),
+            "Link văn bản": st.column_config.LinkColumn("Thao tác", display_text="Xem chi tiết ℹ️")
         }
     )
 
-    # C. FOOTER
     st.markdown("""
         <div class="custom-footer">
             © 2026 Bản quyền thuộc Cục hóa chất - Bộ Công thương.<br>
-            Địa chỉ: 21 Ngô Quyền, Tràng Tiền, Hoàn Kiếm, Hà Nội.<br>
-            Email: admin@chemicaldata.gov.vn. Website: www.cuchoachat.gov.vn
+            Email: admin@chemicaldata.gov.vn.
         </div>
     """, unsafe_allow_html=True)
 
