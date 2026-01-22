@@ -39,12 +39,15 @@ st.markdown("""
     .nav-item {
         color: white; text-decoration: none; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 5px;
     }
+    /* TABS */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
         height: 40px; background-color: #f0f2f6; border-radius: 4px 4px 0 0;
         padding-top: 10px; padding-bottom: 10px; font-weight: bold;
     }
     .stTabs [aria-selected="true"] { background-color: #007bff !important; color: white !important; }
+    
+    /* FOOTER */
     .custom-footer {
         background-color: #0066b3; color: white; padding: 20px; text-align: center;
         font-size: 13px; margin-top: 50px; border-top: 4px solid #ffcc00;
@@ -55,11 +58,12 @@ st.markdown("""
 # --- 3. LOAD DATA ---
 @st.cache_data(ttl=600)
 def load_data_from_sheet():
-    # Link Google Sheet của bạn
+    # LINK GOOGLE SHEET CỦA BẠN (Đừng quên kiểm tra lại link này)
     sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-4uKzaw2LpN5lBOGyG4MB3DPbaC6p6SbtO-yhoEQHRVFx30UHgJOSGfwTn-dOHkhBjAMoDea8n0ih/pub?gid=0&single=true&output=csv" 
     try:
         df = pd.read_csv(sheet_url, dtype=str)
-        df.columns = df.columns.str.strip() # Xóa khoảng trắng tên cột
+        # Xóa khoảng trắng thừa ở tên cột để tránh lỗi
+        df.columns = df.columns.str.strip() 
         return df
     except Exception:
         return None
@@ -106,61 +110,53 @@ def main_screen():
             <a href="#" class="nav-item">🔍 Tìm kiếm</a>
         </div>
     """, unsafe_allow_html=True)
+    
     st.markdown('<h2 style="color: #444; border-bottom: 2px solid #0066b3; padding-bottom: 10px;">Tra cứu Danh mục Hóa chất & Ngưỡng tồn trữ</h2>', unsafe_allow_html=True)
 
     df = load_data_from_sheet()
     if df is None:
-        st.error("⚠️ Lỗi kết nối dữ liệu Google Sheet.")
+        st.error("⚠️ Lỗi kết nối dữ liệu Google Sheet. Vui lòng kiểm tra lại Link.")
         return
 
     # TẠO TABS
     tab1, tab2 = st.tabs(["🔍 Tra cứu đơn (Filter)", "🔢 Tra cứu hàng loạt"])
 
-    # =========================================================
-    # TAB 1: TRA CỨU ĐƠN (AUTO-FILTER & STACKED)
-    # =========================================================
+    # --- TAB 1: TRA CỨU ĐƠN (AUTO-FILTER) ---
     with tab1:
-        st.caption("Nhập thông tin vào các ô để lọc tự động (Logic AND: Thỏa mãn tất cả các ô đang nhập).")
+        st.caption("Nhập thông tin vào các ô để lọc tự động (Logic AND).")
         
-        # Tạo 3 cột nhập liệu (Bỏ cột nút bấm đi)
+        # 3 Cột nhập liệu
         col_f1, col_f2, col_f3 = st.columns(3)
-        
         with col_f1:
-            # key='cas' để Streamlit nhớ giá trị
             f_cas = st.text_input("Mã CAS", placeholder="VD: 50, 106...", key="f_cas")
         with col_f2:
-            f_name = st.text_input("Tên hóa chất (tiếng Anh)", placeholder="VD: Acid...", key="f_name")
+            f_name = st.text_input("Tên hóa chất", placeholder="VD: Acid...", key="f_name")
         with col_f3:
             f_formula = st.text_input("Công thức hóa học", placeholder="VD: HCHO...", key="f_formula")
 
-        # --- LOGIC LỌC CHỒNG (STACKED FILTER) ---
-        # Bắt đầu với bảng gốc
+        # LOGIC LỌC (Dùng đúng tên cột bạn cung cấp: MaCAS, Tên chất, Công thức hóa học)
         df_result = df.copy()
 
-        # 1. Lọc CAS (Nếu ô CAS có chữ)
+        # 1. Lọc theo MaCAS
         if f_cas:
-            # Lọc theo chuỗi (contains), case=False (không phân biệt hoa thường), na=False (bỏ qua ô trống)
-            if 'CAS' in df_result.columns:
+            if 'MaCAS' in df_result.columns:
                 df_result = df_result[df_result['MaCAS'].astype(str).str.contains(f_cas.strip(), case=False, na=False)]
         
-        # 2. Lọc tiếp Tên (Nếu ô Tên có chữ) -> Lọc chồng lên kết quả trên
+        # 2. Lọc theo Tên chất
         if f_name:
             if 'Tên chất' in df_result.columns:
-                df_result = df_result[df_result['Tên khoa học (danh pháp IUPAC)'].astype(str).str.contains(f_name.strip(), case=False, na=False)]
+                df_result = df_result[df_result['Tên chất'].astype(str).str.contains(f_name.strip(), case=False, na=False)]
         
-        # 3. Lọc tiếp Công thức (Nếu ô CT có chữ) -> Lọc chồng tiếp
+        # 3. Lọc theo Công thức hóa học
         if f_formula:
              if 'Công thức hóa học' in df_result.columns:
                 df_result = df_result[df_result['Công thức hóa học'].astype(str).str.contains(f_formula.strip(), case=False, na=False)]
 
-        # --- HIỂN THỊ KẾT QUẢ NGAY LẬP TỨC ---
         st.success(f"Tìm thấy: **{len(df_result)}** kết quả")
         show_table(df_result)
 
 
-    # =========================================================
-    # TAB 2: TRA CỨU HÀNG LOẠT (GIỮ NGUYÊN)
-    # =========================================================
+    # --- TAB 2: TRA CỨU HÀNG LOẠT ---
     with tab2:
         st.caption("Nhập danh sách mã CAS ngăn cách bởi dấu chấm phẩy (;).")
         col_search, col_btn = st.columns([8, 1])
@@ -171,19 +167,20 @@ def main_screen():
             st.write("")
             btn_batch_search = st.button("Tìm kiếm", type="primary", use_container_width=True)
 
-        df_batch = pd.DataFrame()
         if search_query:
+            df_batch = pd.DataFrame()
             keywords = [x.strip().replace('"', '').replace("'", "") for x in search_query.split(';') if x.strip() != '']
-            if 'CAS' in df.columns:
-                df_batch = df[df['CAS'].isin(keywords)]
+            
+            # Dùng đúng tên cột MaCAS
+            if 'MaCAS' in df.columns:
+                df_batch = df[df['MaCAS'].isin(keywords)]
             
             st.info(f"Đã tìm thấy **{len(df_batch)}** hóa chất.")
             show_table(df_batch)
 
-    # Footer
     st.markdown('<div class="custom-footer">© 2026 Bản quyền thuộc Cục hóa chất.</div>', unsafe_allow_html=True)
 
-# --- TABLE DISPLAY ---
+# --- HÀM HIỂN THỊ BẢNG (MAPPING ĐÚNG CỘT CỦA BẠN) ---
 def show_table(dataframe):
     st.dataframe(
         dataframe,
@@ -191,13 +188,14 @@ def show_table(dataframe):
         height=500,
         hide_index=True,
         column_config={
+            # Cấu hình hiển thị tên cột cho đẹp
             "STT": st.column_config.NumberColumn("STT", width="small"),
+            "MaCAS": st.column_config.TextColumn("Mã CAS", width="small"),
             "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
             "Tên khoa học (danh pháp IUPAC)": st.column_config.TextColumn("Tên IUPAC", width="medium"),
-            "CAS": st.column_config.TextColumn("Mã CAS", width="small"),
-            "Phụ lục quản lý": st.column_config.TextColumn("Phụ lục quản lý", width="large"),
             "Công thức hóa học": st.column_config.TextColumn("CTHH", width="small"),
-            "Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)": st.column_config.NumberColumn("Ngưỡng (kg)", width="small"),
+            "Phụ lục quản lý": st.column_config.TextColumn("Phụ lục quản lý", width="large"),
+            "Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)": st.column_config.NumberColumn("Ngưỡng tồn trữ (kg)", width="small"),
             "Link văn bản": st.column_config.LinkColumn("Thao tác", display_text="Xem chi tiết ℹ️")
         }
     )
