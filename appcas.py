@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS "THẦN THÁNH" ---
+# --- 2. CSS TÙY CHỈNH GIAO DIỆN (TAB & HEADER) ---
 st.markdown("""
     <style>
     html, body, [class*="css"] { font-family: 'Arial', sans-serif; }
@@ -17,7 +17,7 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* HEADER */
+    /* HEADER XANH */
     .header-custom {
         background-color: #0066b3;
         padding: 15px 30px;
@@ -26,6 +26,7 @@ st.markdown("""
         align-items: center;
         border-bottom: 1px solid #004d88;
         color: white;
+        margin-bottom: 20px;
     }
     .header-logo-area h1 {
         color: white !important; font-size: 20px !important; font-weight: 700 !important;
@@ -40,59 +41,51 @@ st.markdown("""
 
     /* NAVBAR */
     .navbar {
-        background-color: #005a9e; padding: 8px 30px; display: flex; gap: 25px; border-bottom: 4px solid #e9ecef;
+        background-color: #005a9e; padding: 8px 30px; display: flex; gap: 25px; border-bottom: 4px solid #e9ecef; margin-bottom: 20px;
     }
     .nav-item {
         color: white; text-decoration: none; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 5px;
     }
     .nav-item:hover { color: #ffcc00; }
 
-    /* CONTENT */
-    .page-title {
-        color: #d93025; font-size: 26px; font-weight: bold;
-        margin-top: 20px; margin-bottom: 15px; padding-left: 10px; border-left: 5px solid #d93025;
+    /* TÙY CHỈNH TAB (Để giống nút bấm màu xanh trong hình) */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
     }
+    .stTabs [data-baseweb="tab"] {
+        height: 40px;
+        background-color: #f0f2f6;
+        border-radius: 4px 4px 0 0;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-weight: bold;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #007bff !important;
+        color: white !important;
+    }
+
+    /* FOOTER */
     .custom-footer {
         background-color: #0066b3; color: white; padding: 20px; text-align: center;
         font-size: 13px; margin-top: 50px; border-top: 4px solid #ffcc00;
     }
-    .stButton button {
-        background-color: #f6b93b !important; color: #000 !important; border: none !important; font-weight: bold !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HÀM LOAD DỮ LIỆU TỪ GOOGLE SHEETS (QUAN TRỌNG) ---
-# Dùng @st.cache_data để không phải tải lại mỗi khi bấm nút (giúp web nhanh hơn)
-@st.cache_data(ttl=600) # 600 giây (10 phút) sẽ tự cập nhật dữ liệu mới 1 lần
+# --- 3. HÀM LOAD DỮ LIỆU ---
+@st.cache_data(ttl=600)
 def load_data_from_sheet():
-    # -----------------------------------------------------------------------------------------
-    # BƯỚC QUAN TRỌNG: DÁN LINK CSV CỦA BẠN VÀO DƯỚI ĐÂY
-    # (File -> Share -> Publish to Web -> Chọn CSV -> Copy Link)
-    # -----------------------------------------------------------------------------------------
+    # Link Google Sheet CSV của bạn
     sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-4uKzaw2LpN5lBOGyG4MB3DPbaC6p6SbtO-yhoEQHRVFx30UHgJOSGfwTn-dOHkhBjAMoDea8n0ih/pub?gid=0&single=true&output=csv" 
     
     try:
-        # Nếu chưa có link (đang test), dùng dữ liệu giả
-        if "HÃY_DÁN" in sheet_url:
-            return None 
-            
         df = pd.read_csv(sheet_url, dtype=str)
+        # Chuẩn hóa tên cột: Xóa khoảng trắng thừa ở tên cột (nếu có) để tránh lỗi không tìm thấy cột
+        df.columns = df.columns.str.strip()
         return df
     except Exception as e:
         return None
-
-# Dữ liệu giả lập (Backup khi chưa có link thật)
-def get_mock_data():
-    data_mock = {
-        'STT': [1, 2, 3],
-        'Mã': ['Nci No: 123', 'Nci No: 456', 'Nci No: 789'],
-        'Cas': ['50-00-0', '50-01-1', '50-02-2'],
-        'Tên chất': ['Formaldehyde', 'Salt of hydrogen', 'Fluoro-11beta'],
-        'Phụ lục quản lý': ['Khai báo', 'Không quy định', 'Hạn chế'],
-        'LinkVanBan': ['https://vanban.chinhphu.vn', '', '']
-    }
-    return pd.DataFrame(data_mock)
 
 # --- 4. HỆ THỐNG ĐĂNG NHẬP ---
 if 'logged_in' not in st.session_state:
@@ -123,7 +116,7 @@ def login_screen():
 
 # --- 5. GIAO DIỆN CHÍNH ---
 def main_screen():
-    # Header & Navbar HTML
+    # Header & Navbar
     st.markdown("""
         <div class="header-custom">
             <div class="header-logo-area">
@@ -141,60 +134,98 @@ def main_screen():
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="page-title">Hóa chất</div>', unsafe_allow_html=True)
+    # Tiêu đề trang
+    st.markdown('<h2 style="color: #444; border-bottom: 2px solid #0066b3; padding-bottom: 10px;">Tra cứu Danh mục Hóa chất & Ngưỡng tồn trữ</h2>', unsafe_allow_html=True)
 
-    # --- KHUNG TÌM KIẾM ---
-    col_search, col_btn = st.columns([8, 1])
-    with col_search:
-        # Ô nhập liệu
-        search_query = st.text_input("Nội dung cần tìm", label_visibility="collapsed", placeholder="Nhập mã CAS (ví dụ: 50-00-0; 50-01-1)...")
-    with col_btn:
-        # Nút bấm
-        btn_search = st.button("➕ Tìm kiếm")
-
-    # --- XỬ LÝ DỮ LIỆU ---
+    # Tải dữ liệu
     df = load_data_from_sheet()
     
-    # Nếu tải Google Sheet lỗi hoặc chưa nhập link thì dùng dữ liệu giả
     if df is None:
-        if "HÃY_DÁN" in "HÃY_DÁN": # Chỉ hiện thông báo này khi bạn chưa sửa code
-            st.warning("⚠️ Bạn chưa dán link Google Sheet vào code. Đang hiển thị dữ liệu mẫu.")
-        df = get_mock_data()
+        st.error("⚠️ Không tải được dữ liệu từ Google Sheet. Vui lòng kiểm tra lại đường link hoặc quyền truy cập.")
+        return
 
-    # --- LOGIC LỌC DỮ LIỆU (SEARCH) ---
-    # Nếu người dùng bấm nút Tìm hoặc đã nhập chữ và Enter
-    if search_query:
-        # Tách chuỗi nhập vào bằng dấu chấm phẩy ; (Ví dụ: "50-00-0; 64-17-5")
-        keywords = [x.strip() for x in search_query.split(';') if x.strip() != '']
+    # --- TẠO 2 TAB TRA CỨU (TAB GIAO DIỆN) ---
+    tab1, tab2 = st.tabs(["🔍 Tra cứu đơn (Filter)", "🔢 Tra cứu hàng loạt"])
+
+    # ==========================
+    # TAB 1: TRA CỨU ĐƠN (FILTER)
+    # ==========================
+    with tab1:
+        st.caption("Nhập thông tin vào các ô bên dưới để lọc dữ liệu (Hỗ trợ tìm kiếm theo tên hoặc mã CAS).")
         
-        # Lọc trong cột 'Cas' (Bạn phải đảm bảo Google Sheet có cột tên là 'Cas')
-        # Nếu muốn tìm cả Tên chất thì dùng logic OR (|)
-        if 'Cas' in df.columns:
-            df = df[df['Cas'].isin(keywords)]
+        # Tạo 4 cột nhập liệu giống hình mẫu
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        
+        with col_f1:
+            filter_cas = st.text_input("Mã CAS", placeholder="VD: 50-00-0")
+        with col_f2:
+            filter_name = st.text_input("Tên hóa chất (Tiếng Anh/Việt)", placeholder="VD: Formaldehyde")
+        with col_f3:
+            filter_formula = st.text_input("Công thức hóa học", placeholder="VD: HCHO")
+        with col_f4:
+            st.write("") # Placeholder cho cân đối
+            st.info("Nhập và nhấn Enter để tìm")
+
+        # Logic lọc dữ liệu cho Tab 1
+        df_result_t1 = df.copy()
+        
+        if filter_cas:
+            # Lọc theo CAS (chứa chuỗi nhập vào)
+            if 'CAS' in df.columns:
+                df_result_t1 = df_result_t1[df_result_t1['CAS'].astype(str).str.contains(filter_cas.strip(), case=False, na=False)]
+        
+        if filter_name:
+            # Lọc theo Tên chất (chứa chuỗi nhập vào)
+            if 'Tên chất' in df.columns:
+                df_result_t1 = df_result_t1[df_result_t1['Tên chất'].astype(str).str.contains(filter_name.strip(), case=False, na=False)]
+        
+        if filter_formula:
+             if 'Công thức hóa học' in df.columns:
+                df_result_t1 = df_result_t1[df_result_t1['Công thức hóa học'].astype(str).str.contains(filter_formula.strip(), case=False, na=False)]
+
+        # Hiển thị kết quả Tab 1
+        st.write(f"Tìm thấy: **{len(df_result_t1)}** kết quả")
+        show_table(df_result_t1)
+
+
+    # ==========================
+    # TAB 2: TRA CỨU HÀNG LOẠT
+    # ==========================
+    with tab2:
+        st.caption("Nhập danh sách mã CAS ngăn cách bởi dấu chấm phẩy (;). Ví dụ: \"50-00-0\"; \"67-64-1\"")
+        
+        col_search, col_btn = st.columns([8, 1])
+        with col_search:
+            search_query = st.text_area("Nhập danh sách mã CAS", height=80, placeholder='"50-00-0"; "67-64-1"; 7732-18-5')
+        with col_btn:
+            st.write("")
+            st.write("")
+            btn_batch_search = st.button("Tìm kiếm", type="primary", use_container_width=True)
+
+        # Logic lọc dữ liệu cho Tab 2
+        df_result_t2 = pd.DataFrame() # Mặc định rỗng
+        
+        if search_query:
+            # XỬ LÝ CHUỖI NHẬP VÀO:
+            # 1. Tách bằng dấu chấm phẩy
+            # 2. Xóa khoảng trắng thừa
+            # 3. Xóa dấu ngoặc kép " hoặc ' nếu có (để xử lý trường hợp user copy từ Excel có format text)
+            keywords = [x.strip().replace('"', '').replace("'", "") for x in search_query.split(';') if x.strip() != '']
+            
+            if 'CAS' in df.columns:
+                # Dùng hàm .isin để tìm chính xác các mã trong list
+                df_result_t2 = df[df['CAS'].isin(keywords)]
+            else:
+                st.error("Lỗi: File dữ liệu không có cột tên là 'CAS'. Vui lòng kiểm tra Google Sheet.")
+        
+        # Hiển thị kết quả Tab 2
+        if search_query:
+            st.success(f"Đã tìm thấy **{len(df_result_t2)}** hóa chất khớp với danh sách.")
+            show_table(df_result_t2)
         else:
-            st.error("Lỗi: Dữ liệu không có cột tên là 'Cas'. Hãy kiểm tra lại Google Sheet.")
+            st.info("Vui lòng nhập mã CAS để bắt đầu tra cứu.")
 
-    # --- HIỂN THỊ BẢNG KẾT QUẢ ---
-    st.markdown(f"##### Danh mục chất ({len(df)} kết quả)")
-    
-    st.dataframe(
-        df,
-        use_container_width=True,
-        height=500,
-        hide_index=True,
-        column_config={
-            "STT": st.column_config.NumberColumn("STT", width="small"),
-            "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
-"Tên khoa học (danh pháp IUPAC)":st.column_config.TextColumn("Tên khoa học (danh pháp IUPAC)", width="small"),
-            "CAS": st.column_config.TextColumn("MaCAS", width="medium"),
-            "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
-            "Phụ lục quản lý": st.column_config.TextColumn("Phụ lục quản lý", width="large"),
-"Công thức hóa học":st.column_config.TextColumn("Công thức hóa học", width="small"),
-"Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)":st.column_config.TextColumn("Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)", width="small"),
-            "Link văn bản": st.column_config.LinkColumn("Thao tác", display_text="Xem chi tiết ℹ️")
-        }
-    )
-
+    # Footer
     st.markdown("""
         <div class="custom-footer">
             © 2026 Bản quyền thuộc Cục hóa chất - Bộ Công thương.<br>
@@ -202,9 +233,27 @@ def main_screen():
         </div>
     """, unsafe_allow_html=True)
 
+# --- HÀM HIỂN THỊ BẢNG (Dùng chung cho cả 2 tab) ---
+def show_table(dataframe):
+    st.dataframe(
+        dataframe,
+        use_container_width=True,
+        height=500,
+        hide_index=True,
+        column_config={
+            "STT": st.column_config.NumberColumn("STT", width="small"),
+            "Tên chất": st.column_config.TextColumn("Tên chất", width="large"),
+            "Tên khoa học (danh pháp IUPAC)": st.column_config.TextColumn("Tên IUPAC", width="medium"),
+            "CAS": st.column_config.TextColumn("Mã CAS", width="small"),
+            "Phụ lục quản lý": st.column_config.TextColumn("Phụ lục quản lý", width="large"),
+            "Công thức hóa học": st.column_config.TextColumn("Công thức", width="small"),
+            "Ngưỡng khối lượng hóa chất tồn trữ lớn nhất tại một thời điểm (kg)": st.column_config.NumberColumn("Ngưỡng tồn trữ (kg)", width="small"),
+            "Link văn bản": st.column_config.LinkColumn("Thao tác", display_text="Xem chi tiết ℹ️")
+        }
+    )
+
 # --- 6. CHẠY APP ---
 if st.session_state['logged_in']:
     main_screen()
 else:
-
     login_screen()
